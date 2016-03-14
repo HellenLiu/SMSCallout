@@ -1,0 +1,53 @@
+global class SMSCallout {
+    global static Integer i                {get;set;}
+    global static String SendSMS(String PhoneNO, Datetime Dlvtime, Datetime Vldtime, String msgcontent) {
+		
+        HttpRequest req = new HttpRequest();
+        String endPoint  = 'http://smexpress.mitake.com.tw:7002/SpLmGet?';
+            endPoint += 'username=28832791&password=123456&dstaddr=' + PhoneNO + '&DestName=Õıœ»…˙&dlvtime=' 
+            + Dlvtime + '&vldtime=' + Vldtime 
+            + '&smbody=' + EncodingUtil.urlEncode(msgcontent,'Big5') 
+            + '&response=http://192.168.1.200/smreply.asp';
+        req.setMethod('GET');
+
+        req.setEndpoint(endPoint);
+        req.setHeader('Content-Type', 'text/html');
+
+        Http h = new Http();
+        HttpResponse res = h.send(req);
+        return res.getStatus();
+    } 
+    global static String SendBatchSMS(List<SMS__c> smsList){
+        String sURL = 'http://smexpress.mitake.com.tw:7002/SpLmPost';
+        String sUserName = '28832791';
+        String sPassword = '123456';
+        String sEncoding = 'UTF8';
+        String sURLString = sURL + '?username=' + sUserName + '&password=' + sPassword + '&Encoding_PostIn=' + sEncoding;
+        String bodySet = '';
+        HttpRequest req = new HttpRequest();
+        req.setHeader('Content-Type', 'text/html');
+        
+        Map<String,SMSCallout__c> clients = new Map<String,SMSCallout__c>();
+        clients = SMSCallout__c.getAll();
+        List<SMSCallout__c> ids = new List<SMSCallout__c>(clients.values());
+       	i = Integer.valueOf(ids[0].Client_Id__c);
+         for(SMS__c sms : smsList) {
+            i = i + 1;
+            String code = String.valueOf(i);
+            bodySet += code + '$$' + sms.Number__c + '$$$$$$'
+               + sms.Recipient__c + '$$$$'
+               + sms.Message__c + '\r\n'; 
+        }
+     
+        req.setEndpoint(sURLString);
+        req.setBody(bodySet);
+        req.setMethod('POST');
+   
+        Http h = new Http();
+        HttpResponse res = h.send(req);
+        
+        update new SMSCallout__c(Id = 'a0L4B000000KMjZUAW', Name = 'Id',Client_Id__c = i);
+        
+        return res.getBody();   
+    }
+}
